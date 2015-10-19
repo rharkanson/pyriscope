@@ -2,7 +2,7 @@ __author__ = 'Russell Harkanson'
 
 import sys
 
-if __name__ == '__main__':
+if __name__ in ("__main__", "pyriscope"):
     import pyriscope.pyriscope
 
     sys.argv.pop(0)

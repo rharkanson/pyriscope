@@ -3,11 +3,14 @@ __author__ = 'Russell Harkanson'
 import sys
 import os
 import re
+from subprocess import PIPE, Popen
 import json
 import requests
 from datetime import datetime
 
 # Contants.
+STDOUT = "\r{:<60}"
+STDOUTNL = "\r{:<60}\n"
 PERISCOPE_GETBROADCAST = "https://api.periscope.tv/api/v2/getBroadcastPublic?{}={}"
 PERISCOPE_GETACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?{}={}"
 ARGLIST_HELP = ('', '-h', '--h', '-help', '--help', 'h', 'help', '?', '-?', '--?')
@@ -15,11 +18,13 @@ ARGLIST_CONVERT = ('-c', '--convert')
 ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
+FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
+FFMPEG_ROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 
 
 def show_help():
     print("""
-version 1.0.5
+version 1.0.6
 
 Usage:
     pyriscope <url> [options]
@@ -32,7 +37,7 @@ url accepted forms:
 
 options:
     -h, --help              Show help. (This)
-    -c, --convert           Convert download (.ts) to mp4.
+    -c, --convert           Convert download (.ts) to mp4. (Requires ffmpeg)
     -r, --rotate            If convert, rotate converted video.
     -a, --agent             Turn off user agent mocking. (Slightly quicker initial startup)
     -n, --name <file>       Name the file.
@@ -91,8 +96,8 @@ def main(args):
 
     # Defaults arg flag settings.
     url_parts = {}
-    convert = 0
-    rotate = 0
+    convert = False
+    rotate = False
     agent_mocking = True
     name = ""
     req_headers = {}
@@ -125,9 +130,9 @@ def main(args):
         if args[i] in ARGLIST_HELP:
             show_help()
         if args[i] in ARGLIST_CONVERT:
-            convert = 1
+            convert = True
         if args[i] in ARGLIST_ROTATE:
-            rotate = 1
+            rotate = True
         if args[i] in ARGLIST_AGENTMOCK:
             agent_mocking = False
         if args[i] in ARGLIST_NAME:
@@ -135,7 +140,7 @@ def main(args):
 
     # Set a mocked user agent.
     if agent_mocking:
-        sys.stdout.write("\rGetting mocked User-Agent.")
+        sys.stdout.write(STDOUT.format("Getting mocked User-Agent."))
         sys.stdout.flush()
         req_headers['User-Agent'] = get_mocked_user_agent()
 
@@ -145,7 +150,7 @@ def main(args):
     else:
         req_url = PERISCOPE_GETBROADCAST.format("token", url_parts['token'])
 
-    sys.stdout.write("\rDownloading broadcast information.")
+    sys.stdout.write(STDOUT.format("Downloading broadcast information."))
     sys.stdout.flush()
     response = requests.get(req_url, headers=req_headers)
     broadcast_public = json.loads(response.text)
@@ -168,7 +173,8 @@ def main(args):
     # Get ready to start capturing.
     if broadcast_public['broadcast']['state'] == 'RUNNING':
         # The stream is live, start live capture.
-        print("")
+        print("Live stream downloading coming soon!")
+        sys.exit(0)
 
 
     else:
@@ -182,7 +188,7 @@ def main(args):
         else:
             req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
-        sys.stdout.write("\rDownloading replay information.")
+        sys.stdout.write(STDOUT.format("Downloading replay information."))
         sys.stdout.flush()
         response = requests.get(req_url, headers=req_headers)
         access_public = json.loads(response.text)
@@ -202,7 +208,7 @@ def main(args):
         req_headers['Host'] = "replay.periscope.tv"
 
         # Get the list of chunks to download.
-        sys.stdout.write("\rDownloading chunk list.")
+        sys.stdout.write(STDOUT.format("Downloading chunk list."))
         sys.stdout.flush()
         response = requests.get(access_public['replay_url'], headers=req_headers)
         chunks = response.text
@@ -217,7 +223,7 @@ def main(args):
         with open("{}.ts".format(name), 'wb') as handle:
             for chunk_url in download_list:
                 perc = int((cnt/len(download_list))*100)
-                sys.stdout.write("\r[{:>3}%] Downloading replay.".format(perc))
+                sys.stdout.write(STDOUT.format("[{:>3}%] Downloading replay.".format(perc)))
                 sys.stdout.flush()
 
                 data = requests.get(chunk_url, stream=True, headers=req_headers)
@@ -230,25 +236,33 @@ def main(args):
 
                 cnt += 1
 
-        sys.stdout.write("\r{}.ts Downloaded!\n".format(name))
+        sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
         sys.stdout.flush()
+
+        # Convert video to .mp4.
+        if convert:
+            sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
+            sys.stdout.flush()
+
+            if rotate:
+                # call(FFMPEG_ROT.format(name).split(' '))
+                Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
+            else:
+                # call(FFMPEG_NOROT.format(name).split(' '))
+                Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
+
+            sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
+            sys.stdout.flush()
         sys.exit(0)
 
 # Entry point.
-if __name__ == "__main__":
+if __name__ in ("__main__", "pyriscope"):
     sys.argv.pop(0)
     if len(sys.argv) == 1 and sys.argv[0] == "__magic__":
         main(input("Enter args now: ").strip(' ').split(' '))
     else:
         main(sys.argv)
 else:
-    if __name__ == "pyriscope":
-        sys.argv.pop(0)
-        if len(sys.argv) == 1 and sys.argv[0] == "__magic__":
-            main(input("Enter args now: ").strip(' ').split(' '))
-        else:
-            main(sys.argv)
-
     print("Must be the first module ran.")
     print("python {} <url> [options]".format(os.path.dirname(__file__)))
     sys.exit(0)
