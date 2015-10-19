@@ -19,7 +19,7 @@ ARGLIST_NAME = ('-n', '--name')
 
 def show_help():
     print("""
-version 1.0.3
+version 1.0.4
 
 Usage:
     pyriscope <url> [options]
@@ -242,6 +242,13 @@ if __name__ == "__main__":
     else:
         main(sys.argv)
 else:
+    if __name__ == "pyriscope":
+        sys.argv.pop(0)
+        if len(sys.argv) == 1 and sys.argv[0] == "__magic__":
+            main(input("Enter args now: ").strip(' ').split(' '))
+        else:
+            main(sys.argv)
+
     print("Must be the first module ran.")
     print("python {} <url> [options]".format(os.path.dirname(__file__)))
     sys.exit(0)
