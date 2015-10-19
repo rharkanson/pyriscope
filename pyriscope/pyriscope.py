@@ -24,7 +24,7 @@ FFMPEG_ROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy
 
 def show_help():
     print("""
-version 1.0.6
+version 1.0.7
 
 Usage:
     pyriscope <url> [options]

@@ -5,7 +5,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-VERSION = '1.0.6'
+VERSION = '1.0.7'
 
 setup(name='pyriscope',
       version=VERSION,
@@ -19,6 +19,7 @@ setup(name='pyriscope',
       download_url='https://github.com/rharkanson/pyriscope/tarball/{}'.format(VERSION),
       keywords = ['video', 'downloader', 'Periscope'],
       classifiers=[],
+      install_requires=["requests", "wheel"],
       long_description="""
 Easily download any available Periscope stream by simply giving pyriscope the URL.
 
