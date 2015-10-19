@@ -1,6 +1,7 @@
 __author__ = 'Russell Harkanson'
 
 import sys
+import os
 import re
 import json
 import requests
@@ -18,7 +19,7 @@ ARGLIST_NAME = ('-n', '--name')
 
 def show_help():
     print("""
-version 1.0.0
+version 1.0.3
 
 Usage:
     pyriscope <url> [options]
@@ -242,4 +243,5 @@ if __name__ == "__main__":
         main(sys.argv)
 else:
     print("Must be the first module ran.")
+    print("python {} <url> [options]".format(os.path.dirname(__file__)))
     sys.exit(0)

@@ -5,7 +5,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-VERSION = '1.0.0'
+VERSION = '1.0.3'
 
 setup(name='pyriscope',
       version=VERSION,
@@ -16,7 +16,7 @@ setup(name='pyriscope',
       license='MIT',
       packages=['pyriscope'],
       package_data={'pyriscope': ['*.txt']},
-      download_url='https://github.com/rharkanson/pyriscope/tarball/1.0.0',
+      download_url='https://github.com/rharkanson/pyriscope/tarball/{}'.format(VERSION),
       keywords = ['video', 'downloader', 'Periscope'],
       classifiers=[],
       long_description="""
