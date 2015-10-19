@@ -19,7 +19,7 @@ ARGLIST_NAME = ('-n', '--name')
 
 def show_help():
     print("""
-version 1.0.4
+version 1.0.5
 
 Usage:
     pyriscope <url> [options]
