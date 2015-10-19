@@ -28,6 +28,12 @@ Pyriscope is open source, with a [public repo][git-repo-url] on Github.
 $ pip install pyriscope
 ```
 
+### Usage
+
+```sh
+$ python /path/to/pyriscope <url> [options]
+```
+
 To enable conversion and rotation, [ffmpeg] is required.
 
 License
