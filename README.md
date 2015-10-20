@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.0.7
+1.1.0
 
 ### About
 
@@ -38,7 +38,6 @@ To enable conversion and rotation, [ffmpeg] is required.
 
 ### Development
 
-* Download live streams.
 * Multi-threaded download support for quicker download speeds.
 * Multiple URL support.
 

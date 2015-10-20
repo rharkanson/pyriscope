@@ -20,11 +20,12 @@ ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
+FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
 
 
 def show_help():
     print("""
-version 1.0.7
+version 1.1.0
 
 Usage:
     pyriscope <url> [options]
@@ -160,6 +161,10 @@ def main(args):
         sys.exit(1)
 
     # Loaded the correct JSON. Create file name.
+    if name[-3:] == ".ts":
+        name = name[:-3]
+    if name[-4:] == ".mp4":
+        name = name[:-4]
     if name == "":
         broadcast_start_time = broadcast_public['broadcast']['start'].rfind('.')
         broadcast_start_time = broadcast_public['broadcast']['start'][:broadcast_start_time]
@@ -173,9 +178,44 @@ def main(args):
     # Get ready to start capturing.
     if broadcast_public['broadcast']['state'] == 'RUNNING':
         # The stream is live, start live capture.
-        print("Live stream downloading coming soon!")
-        sys.exit(0)
+        if url_parts['token'] == "":
+            req_url = PERISCOPE_GETACCESS.format("broadcast_id", url_parts['broadcast_id'])
+        else:
+            req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
+        sys.stdout.write(STDOUT.format("Downloading live stream information."))
+        sys.stdout.flush()
+        response = requests.get(req_url, headers=req_headers)
+        access_public = json.loads(response.text)
+
+        if 'success' in access_public and access_public['success'] == False:
+            print("\nError: Video expired/deleted/wasn't found.")
+            sys.exit(1)
+
+        live_url = FFMPEG_LIVE.format(url_parts['url'], req_headers['User-Agent'], access_public['hls_url'], name)
+
+        # Start downloading live stream.
+        sys.stdout.write(STDOUT.format("Recording stream to {}.ts".format(name)))
+        sys.stdout.flush()
+
+        Popen(live_url, shell=True, stdout=PIPE).stdout.read()
+
+        sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
+        sys.stdout.flush()
+
+        # Convert video to .mp4.
+        if convert:
+            sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
+            sys.stdout.flush()
+
+            if rotate:
+                Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
+            else:
+                Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
+
+            sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
+            sys.stdout.flush()
+        sys.exit(0)
 
     else:
         if not broadcast_public['broadcast']['available_for_replay']:
@@ -245,10 +285,8 @@ def main(args):
             sys.stdout.flush()
 
             if rotate:
-                # call(FFMPEG_ROT.format(name).split(' '))
                 Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
             else:
-                # call(FFMPEG_NOROT.format(name).split(' '))
                 Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
 
             sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
