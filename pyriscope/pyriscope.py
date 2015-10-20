@@ -25,7 +25,7 @@ FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}
 
 def show_help():
     print("""
-version 1.1.0
+version 1.1.1
 
 Usage:
     pyriscope <url> [options]
@@ -178,6 +178,8 @@ def main(args):
     # Get ready to start capturing.
     if broadcast_public['broadcast']['state'] == 'RUNNING':
         # The stream is live, start live capture.
+        name = "{}.live".format(name)
+
         if url_parts['token'] == "":
             req_url = PERISCOPE_GETACCESS.format("broadcast_id", url_parts['broadcast_id'])
         else:

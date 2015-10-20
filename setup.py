@@ -5,7 +5,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 
 setup(name='pyriscope',
       version=VERSION,
