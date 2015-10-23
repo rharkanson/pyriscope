@@ -2,7 +2,7 @@ __author__ = 'Russell Harkanson'
 
 from setuptools import setup
 
-VERSION = '1.1.5'
+VERSION = '1.1.6'
 
 setup(name='pyriscope',
       version=VERSION,

@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.1.5
+1.1.6
 
 ### About
 
@@ -59,7 +59,7 @@ options:
 
     -n, --name <file>       Name the file (for single URL input only).
 
-    
+
 
 ### Development
 

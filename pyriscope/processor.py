@@ -3,10 +3,12 @@ __author__ = 'Russell Harkanson'
 import sys
 import os
 import re
-from subprocess import PIPE, Popen
 import json
 import requests
+import shutil
+from subprocess import PIPE, Popen
 from datetime import datetime
+
 
 # Contants.
 STDOUT = "\r{:<60}"
@@ -25,9 +27,10 @@ FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}
 URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearch.net)\/(w|\S+)\/(\S+)')
 
 
+# Functions.
 def show_help():
     print("""
-version 1.1.5
+version 1.1.6
 
 Usage:
     pyriscope <urls> [options]
@@ -51,14 +54,20 @@ About:
 
     Pyriscope is open source, with a public repo on Github.
         https://github.com/rharkanson/pyriscope
+        """)
 
-    """)
+    if shutil.which("ffmpeg") is not None:
+        print("Found ffmpeg.")
+        print("Live stream recording and conversion/rotation is available.")
+    else:
+        print("Did NOT find ffmpeg.")
+        print("Live stream recording and conversion/rotation is NOT available.")
+
     sys.exit(0)
 
 
 def dissect_url(url):
     match = re.search(URL_PATTERN, url)
-
     parts = {}
 
     try:
@@ -99,12 +108,17 @@ def process(args):
 
     # Defaults arg flag settings.
     url_parts_list = []
+    ffmpeg = True
     convert = False
     clean = False
     rotate = False
     agent_mocking = True
     name = ""
     req_headers = {}
+
+    # Check for ffmpeg.
+    if shutil.which("ffmpeg") is None:
+        ffmpeg = False
 
     # Read in args and set appropriate flags.
     cont = None
@@ -139,6 +153,7 @@ def process(args):
             convert = True
             clean = True
         if args[i] in ARGLIST_ROTATE:
+            convert = True
             rotate = True
         if args[i] in ARGLIST_AGENTMOCK:
             agent_mocking = False
@@ -150,6 +165,13 @@ def process(args):
     if len(url_parts_list) < 1:
         print("\nError: No valid URLs entered.")
         sys.exit(1)
+
+    # Disable conversion/rotation if ffmpeg is not found.
+    if convert and not ffmpeg:
+        print("ffmpeg not found: Disabling conversion/rotation.")
+        convert = False
+        clean = False
+        rotate = False
 
     # Set a mocked user agent.
     if agent_mocking:
@@ -198,6 +220,11 @@ def process(args):
 
         # Get ready to start capturing.
         if broadcast_public['broadcast']['state'] == 'RUNNING':
+            # Cannot record live stream without ffmpeg.
+            if not ffmpeg:
+                print("\nError: Cannot record live stream without ffmpeg: {}".format(url_parts['url']))
+                continue
+
             # The stream is live, start live capture.
             name = "{}.live".format(name)
 
@@ -284,7 +311,7 @@ def process(args):
             for chunk in re.findall(chunk_pattern, chunks):
                 download_list.append("{}/{}".format(base_url, chunk))
 
-            # Download chunk .ts files and appened them.
+            # Download chunk .ts files and append them.
             downloaded = True
             cnt = 0
             with open("{}.ts".format(name), 'wb') as handle:
