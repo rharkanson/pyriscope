@@ -39,7 +39,6 @@ To enable conversion and rotation, [ffmpeg] is required.
 ### Development
 
 * Multi-threaded download support for quicker download speeds.
-* Multiple URL support.
 
 License
 ----
