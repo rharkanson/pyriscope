@@ -7,7 +7,7 @@ A simple Periscope video downloader for Python.
 * Optionally, pyriscope converts the downloaded .ts file to a .mp4 file with optional rotation. (Requires ffmpeg)
 
 Usage:
-    `pyriscope <url> [options]`
+    `pyriscope <urls> [options]`
 
 See `pyriscope --help` for further details.
 
@@ -31,7 +31,7 @@ $ pip install pyriscope
 ### Usage
 
 ```sh
-$ python /path/to/pyriscope <url> [options]
+$ python /path/to/pyriscope <urls> [options]
 ```
 
 To enable conversion and rotation, [ffmpeg] is required.
