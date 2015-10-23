@@ -27,7 +27,7 @@ URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearc
 
 def show_help():
     print("""
-version 1.1.4
+version 1.1.5
 
 Usage:
     pyriscope <urls> [options]

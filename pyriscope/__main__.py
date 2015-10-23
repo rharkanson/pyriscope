@@ -1,5 +1,5 @@
 import sys
-import pyriscope
+from pyriscope import processor
 
 
 def main(args=None):
@@ -9,7 +9,7 @@ def main(args=None):
     if len(args) == 1 and args[0] == "__magic__":
         args = input("Enter args now: ").strip(' ').split(' ')
 
-    pyriscope.process(args)
+    processor.process(args)
 
 if __name__ == "__main__":
     main()
