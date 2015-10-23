@@ -31,7 +31,7 @@ $ pip install pyriscope
 ### Usage
 
 ```sh
-$ python /path/to/pyriscope <urls> [options]
+$ pyriscope <urls> [options]
 ```
 
 To enable conversion and rotation, [ffmpeg] is required.
