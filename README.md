@@ -34,7 +34,19 @@ $ pip install pyriscope
 $ pyriscope <urls> [options]
 ```
 
-To enable conversion and rotation, [ffmpeg] is required.
+url accepted forms:
+    https://www.periscope.tv/w/1LyxBeXmWObJN
+    https://www.periscope.tv/w/aM1wNjE1ODAxMHwxcm14UGF2UkxOREtOGeN8ChyFlAXW4ihB_3NA9h3UysetWhz5G8WQdi7dsro=
+    https://www.periscope.tv/Flad_Land/1zqJVmdaBvXGB
+    http://www.perisearch.net/w/aM7_kzIzMjk1NTJ8MU1ZR05iWkFhUnZHd2_M8lSATtJLmbT0wvem7Ml6TTJgRS4_ReuSeQNGN73z
+
+options:
+    -h, --help              Show help. (This)
+    -c, --convert           Convert download (.ts) to mp4. (Requires ffmpeg)
+    -C, --clean             Convert, then clean up (delete) .ts file. (Requires ffmpeg)
+    -r, --rotate            If convert, rotate converted video.
+    -a, --agent             Turn off user agent mocking. (Slightly quicker initial startup)
+    -n, --name <file>       Name the file (for single URL input only).
 
 ### Development
 
