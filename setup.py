@@ -1,11 +1,8 @@
 __author__ = 'Russell Harkanson'
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
-VERSION = '1.1.2'
+VERSION = '1.1.3'
 
 setup(name='pyriscope',
       version=VERSION,
@@ -17,9 +14,14 @@ setup(name='pyriscope',
       packages=['pyriscope'],
       package_data={'pyriscope': ['*.txt']},
       download_url='https://github.com/rharkanson/pyriscope/tarball/{}'.format(VERSION),
-      keywords = ['video', 'downloader', 'Periscope'],
+      keywords=['video', 'downloader', 'Periscope'],
       classifiers=[],
       install_requires=["requests", "wheel"],
+      entry_points={
+          'console_scripts': [
+              'pyriscope = pyriscope.__main__:main'
+          ]
+      },
       long_description="""
 Easily download any available Periscope stream by simply giving pyriscope the URL.
 

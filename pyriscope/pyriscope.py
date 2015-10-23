@@ -27,7 +27,7 @@ URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearc
 
 def show_help():
     print("""
-version 1.1.2
+version 1.1.3
 
 Usage:
     pyriscope <urls> [options]
@@ -92,7 +92,7 @@ def get_mocked_user_agent():
             return "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
 
 
-def main(args):
+def process(args):
     # Make sure there are args, do a primary check for help.
     if len(args) == 0 or args[0] in ARGLIST_HELP:
         show_help()
@@ -144,6 +144,12 @@ def main(args):
             agent_mocking = False
         if args[i] in ARGLIST_NAME:
             cont = ARGLIST_NAME
+
+
+    # Check for URLs found.
+    if len(url_parts_list) < 1:
+        print("\nError: No valid URLs entered.")
+        sys.exit(1)
 
     # Set a mocked user agent.
     if agent_mocking:
@@ -317,14 +323,4 @@ def main(args):
                     if clean:
                         os.remove("{}.ts".format(name))
 
-# Entry point.
-if __name__ in ("__main__", "pyriscope"):
-    sys.argv.pop(0)
-    if len(sys.argv) == 1 and sys.argv[0] == "__magic__":
-        main(input("Enter args now: ").strip(' ').split(' '))
-    else:
-        main(sys.argv)
-else:
-    print("Must be the first module ran.")
-    print("python {} <url> [options]".format(os.path.dirname(__file__)))
     sys.exit(0)
