@@ -2,9 +2,9 @@
 
 A simple Periscope video downloader for Python.
 
-* Easily download any available Periscope stream by simply giving pyriscope the URL.
-* Pyriscope automatically downloads and stitches together Periscope chunks.
-* Optionally, pyriscope converts the downloaded .ts file to a .mp4 file with optional rotation. (Requires ffmpeg)
+* Easily download any available Periscope stream by simply giving Pyriscope the URL.
+* Pyriscope automatically downloads and stitches together Periscope video chunks.
+* Optionally, Pyriscope converts the downloaded .ts file to a .mp4 file with optional rotation. (Requires ffmpeg)
 
 Usage:
     `pyriscope <urls> [options]`
@@ -12,13 +12,13 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.0
+1.2.1
 
 ### About
 
 Author: Russell Harkanson <[@RussHarkanson]>
 
-Pyriscope is influenced by [n3tman/periscope.tv], a Windows batch script also for downloading Periscope videos.
+Pyriscope was influenced by [n3tman/periscope.tv], a Windows batch script for downloading Periscope videos.
 
 Pyriscope is open source, with a [public repo][git-repo-url] on Github.
 

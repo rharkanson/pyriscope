@@ -13,8 +13,9 @@ from threading import Thread
 
 
 # Contants.
-STDOUT = "\r{:<60}"
-STDOUTNL = "\r{:<60}\n"
+STDOUT = "\r{:<80}"
+STDOUTNL = "\r{:<80}\n"
+VERSION = "1.2.1"
 PERISCOPE_GETBROADCAST = "https://api.periscope.tv/api/v2/getBroadcastPublic?{}={}"
 PERISCOPE_GETACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?{}={}"
 ARGLIST_HELP = ('', '-h', '--h', '-help', '--help', 'h', 'help', '?', '-?', '--?')
@@ -23,8 +24,9 @@ ARGLIST_CLEAN = ('-C', '--clean')
 ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
+DEFAULT_UA = "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
-FFMPEG_ROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
+FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
 URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearch.net)\/(w|\S+)\/(\S+)')
 
@@ -72,8 +74,12 @@ class ThreadPool:
 
 # Functions.
 def show_help():
-    print("""
-version 1.2.0
+    if shutil.which("ffmpeg") is not None:
+        ffmpeg_status = "FOUND! Live stream recording and conversion/rotation is available!"
+    else:
+        ffmpeg_status = "NOT FOUND! Live stream recording and conversion/rotation is NOT available."
+
+    print("""version {}
 
 Usage:
     pyriscope <urls> [options]
@@ -92,20 +98,15 @@ options:
     -a, --agent             Turn off user agent mocking. (Slightly quicker initial startup)
     -n, --name <file>       Name the file (for single URL input only).
 
+ffmpeg status:
+    {}
+
 About:
-    Pyriscope is influenced by n3tman/periscope.tv, a Windows batch script also for downloading Periscope videos.
+    Pyriscope was influenced by n3tman/periscope.tv, a Windows batch script for downloading Periscope videos.
 
     Pyriscope is open source, with a public repo on Github.
         https://github.com/rharkanson/pyriscope
-        """)
-
-    if shutil.which("ffmpeg") is not None:
-        print("Found ffmpeg.")
-        print("Live stream recording and conversion/rotation is available.")
-    else:
-        print("Did NOT find ffmpeg.")
-        print("Live stream recording and conversion/rotation is NOT available.")
-
+        """.format(VERSION, ffmpeg_status))
     sys.exit(0)
 
 
@@ -141,7 +142,7 @@ def get_mocked_user_agent():
             response = json.loads(response.text)
             return response['ua']
         except:
-            return "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
+            return DEFAULT_UA
 
 
 def download_chunk(url, headers, path):
@@ -389,7 +390,11 @@ def process(args):
             pool.wait_completion()
 
             if os.path.exists("{}.ts".format(name)):
-                os.remove("{}.ts".format(name))
+                try:
+                    os.remove("{}.ts".format(name))
+                except:
+                    sys.stdout.write(STDOUTNL.format("Failed to delete preexisting {}.ts.".format(name)))
+                    sys.stdout.flush()
 
             with open("{}.ts".format(name), 'wb') as handle:
                 for chunk_info in download_list:
@@ -397,7 +402,11 @@ def process(args):
                         handle.write(ts_file.read())
 
             if os.path.exists(temp_dir_name):
-                shutil.rmtree(temp_dir_name)
+                try:
+                    shutil.rmtree(temp_dir_name)
+                except:
+                    sys.stdout.write(STDOUTNL.format("Failed to delete temp folder: {}.".format(temp_dir_name)))
+                    sys.stdout.flush()
 
             sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
             sys.stdout.flush()
@@ -416,6 +425,10 @@ def process(args):
                 sys.stdout.flush()
 
                 if clean and os.path.exists("{}.ts".format(name)):
-                    os.remove("{}.ts".format(name))
+                    try:
+                        os.remove("{}.ts".format(name))
+                    except:
+                        sys.stdout.write(STDOUTNL.format("Failed to delete {}.ts.".format(name)))
+                        sys.stdout.flush()
 
     sys.exit(0)

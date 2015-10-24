@@ -2,7 +2,7 @@ __author__ = 'Russell Harkanson'
 
 from setuptools import setup
 
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 
 setup(name='pyriscope',
       version=VERSION,
@@ -23,11 +23,11 @@ setup(name='pyriscope',
           ]
       },
       long_description="""
-Easily download any available Periscope stream by simply giving pyriscope the URL.
+Easily download any available Periscope stream by simply giving Pyriscope the URL.
 
-Pyriscope automatically downloads and stitches together Periscope chunks.
+Pyriscope automatically downloads and stitches together Periscope video chunks.
 
-Optionally, pyriscope converts the downloaded .ts file to a .mp4 file with optional rotation. (Requires ffmpeg)
+Optionally, Pyriscope converts the downloaded .ts file to a .mp4 file with optional rotation. (Requires ffmpeg)
 
 Usage:
     pyriscope <urls> [options]
