@@ -1,8 +1,13 @@
-__author__ = 'Russell Harkanson'
+"""
+Copyright (c) 2015 Russell Harkanson
+
+See the file LICENSE.txt for copying permission.
+"""
 
 from setuptools import setup
 
-VERSION = '1.2.1'
+__author__ = 'Russell Harkanson'
+VERSION = '1.2.2'
 
 setup(name='pyriscope',
       version=VERSION,

@@ -1,4 +1,8 @@
-__author__ = 'Russell Harkanson'
+"""
+Copyright (c) 2015 Russell Harkanson
+
+See the file LICENSE.txt for copying permission.
+"""
 
 import sys
 import os
@@ -13,9 +17,11 @@ from threading import Thread
 
 
 # Contants.
-STDOUT = "\r{:<80}"
-STDOUTNL = "\r{:<80}\n"
-VERSION = "1.2.1"
+__author__ = 'Russell Harkanson'
+VERSION = "1.2.2"
+TERM_W = shutil.get_terminal_size((80, 20))[0]
+STDOUT = "\r{:<" + str(TERM_W) + "}"
+STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
 PERISCOPE_GETBROADCAST = "https://api.periscope.tv/api/v2/getBroadcastPublic?{}={}"
 PERISCOPE_GETACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?{}={}"
 ARGLIST_HELP = ('', '-h', '--h', '-help', '--help', 'h', 'help', '?', '-?', '--?')
@@ -25,6 +31,7 @@ ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
 DEFAULT_UA = "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
+DEFAULT_DL_THREADS = 5
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
@@ -54,6 +61,7 @@ class Worker(Thread):
             sys.stdout.flush()
 
             self.tasks.task_done()
+
 
 class ThreadPool:
     def __init__(self, name, num_threads, num_tasks):
@@ -102,11 +110,14 @@ ffmpeg status:
     {}
 
 About:
+    Pyriscope is written by {} and distributed under the MIT license.
+    See the file LICENSE.txt for copying permission.
+
     Pyriscope was influenced by n3tman/periscope.tv, a Windows batch script for downloading Periscope videos.
 
     Pyriscope is open source, with a public repo on Github.
         https://github.com/rharkanson/pyriscope
-        """.format(VERSION, ffmpeg_status))
+        """.format(VERSION, ffmpeg_status, __author__))
     sys.exit(0)
 
 
@@ -373,7 +384,7 @@ def process(args):
                 )
 
             # Download chunk .ts files and append them.
-            pool = ThreadPool(name, 5, len(download_list))
+            pool = ThreadPool(name, DEFAULT_DL_THREADS, len(download_list))
 
             temp_dir_name = ".pyriscope.{}".format(name)
             if not os.path.exists(temp_dir_name):
