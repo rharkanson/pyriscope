@@ -61,10 +61,6 @@ options:
 
 
 
-### Development
-
-* Multi-threaded download support for quicker download speeds.
-
 License
 ----
 
