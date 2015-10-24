@@ -8,6 +8,8 @@ import requests
 import shutil
 from subprocess import PIPE, Popen
 from datetime import datetime
+from queue import Queue
+from threading import Thread
 
 
 # Contants.
@@ -27,10 +29,51 @@ FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}
 URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearch.net)\/(w|\S+)\/(\S+)')
 
 
+# Classes.
+class Worker(Thread):
+    def __init__(self, thread_pool):
+        Thread.__init__(self)
+        self.tasks = thread_pool.tasks
+        self.tasks_info = thread_pool.tasks_info
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            try: func(*args, **kargs)
+            except Exception:
+                print("\nError: Threadpool error.")
+                sys.exit(1)
+
+            self.tasks_info['num_tasks_complete'] += 1
+            perc = int((self.tasks_info['num_tasks_complete']/self.tasks_info['num_tasks'])*100)
+            sys.stdout.write(STDOUT.format("[{:>3}%] Downloading replay {}.ts.".format(perc, self.tasks_info['name'])))
+            sys.stdout.flush()
+
+            self.tasks.task_done()
+
+class ThreadPool:
+    def __init__(self, name, num_threads, num_tasks):
+        self.tasks = Queue(num_threads)
+        self.tasks_info = {
+            'name': name,
+            'num_tasks': num_tasks,
+            'num_tasks_complete': 0
+        }
+        for _ in range(num_threads): Worker(self)
+
+    def add_task(self, func, *args, **kwargs):
+        self.tasks.put((func, args, kwargs))
+
+    def wait_completion(self):
+        self.tasks.join()
+
+
 # Functions.
 def show_help():
     print("""
-version 1.1.6
+version 1.2.0
 
 Usage:
     pyriscope <urls> [options]
@@ -99,6 +142,18 @@ def get_mocked_user_agent():
             return response['ua']
         except:
             return "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
+
+
+def download_chunk(url, headers, path):
+    with open(path, 'wb') as handle:
+        data = requests.get(url, stream=True, headers=headers)
+
+        if not data.ok:
+            print("\nError: Unable to download chunk.")
+            sys.exit(1)
+        for block in data.iter_content(4096):
+            handle.write(block)
+
 
 
 def process(args):
@@ -266,7 +321,7 @@ def process(args):
                 sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
                 sys.stdout.flush()
 
-                if clean:
+                if clean and os.path.exists("{}.ts".format(name)):
                     os.remove("{}.ts".format(name))
             continue
 
@@ -309,45 +364,58 @@ def process(args):
 
             download_list = []
             for chunk in re.findall(chunk_pattern, chunks):
-                download_list.append("{}/{}".format(base_url, chunk))
+                download_list.append(
+                    {
+                        'url': "{}/{}".format(base_url, chunk),
+                        'file_name': chunk
+                    }
+                )
 
             # Download chunk .ts files and append them.
-            downloaded = True
-            cnt = 0
+            pool = ThreadPool(name, 5, len(download_list))
+
+            temp_dir_name = ".pyriscope.{}".format(name)
+            if not os.path.exists(temp_dir_name):
+                os.makedirs(temp_dir_name)
+
+            sys.stdout.write(STDOUT.format("Downloading replay {}.ts.".format(name)))
+            sys.stdout.flush()
+
+            for chunk_info in download_list:
+                temp_file_path = "{}/{}".format(temp_dir_name, chunk_info['file_name'])
+                chunk_info['file_path'] = temp_file_path
+                pool.add_task(download_chunk, chunk_info['url'], req_headers, temp_file_path)
+
+            pool.wait_completion()
+
+            if os.path.exists("{}.ts".format(name)):
+                os.remove("{}.ts".format(name))
+
             with open("{}.ts".format(name), 'wb') as handle:
-                for chunk_url in download_list:
-                    perc = int((cnt/len(download_list))*100)
-                    sys.stdout.write(STDOUT.format("[{:>3}%] Downloading replay {}.ts.".format(perc, name)))
-                    sys.stdout.flush()
+                for chunk_info in download_list:
+                    with open(chunk_info['file_path'], 'rb') as ts_file:
+                        handle.write(ts_file.read())
 
-                    data = requests.get(chunk_url, stream=True, headers=req_headers)
+            if os.path.exists(temp_dir_name):
+                shutil.rmtree(temp_dir_name)
 
-                    if not data.ok:
-                        print("\nError: Unable to download chunk: {}".format(url_parts['url']))
-                        downloaded = False
-                        break
-                    for block in data.iter_content(4096):
-                        handle.write(block)
-                    cnt += 1
+            sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
+            sys.stdout.flush()
 
-            if downloaded:
-                sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
+            # Convert video to .mp4.
+            if convert:
+                sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
                 sys.stdout.flush()
 
-                # Convert video to .mp4.
-                if convert:
-                    sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
-                    sys.stdout.flush()
+                if rotate:
+                    Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
+                else:
+                    Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
 
-                    if rotate:
-                        Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
-                    else:
-                        Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
+                sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
+                sys.stdout.flush()
 
-                    sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
-                    sys.stdout.flush()
-
-                    if clean:
-                        os.remove("{}.ts".format(name))
+                if clean and os.path.exists("{}.ts".format(name)):
+                    os.remove("{}.ts".format(name))
 
     sys.exit(0)
