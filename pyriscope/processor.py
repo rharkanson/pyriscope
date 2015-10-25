@@ -12,13 +12,14 @@ import requests
 import shutil
 from subprocess import PIPE, Popen
 from datetime import datetime
+from dateutil import tz
 from queue import Queue
 from threading import Thread
 
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -31,7 +32,7 @@ ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
 DEFAULT_UA = "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
-DEFAULT_DL_THREADS = 5
+DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
@@ -156,6 +157,16 @@ def get_mocked_user_agent():
             return DEFAULT_UA
 
 
+def stdout(string):
+    sys.stdout.write(STDOUT.format(string))
+    sys.stdout.flush()
+
+
+def stdoutnl(string):
+    sys.stdout.write(STDOUTNL.format(string))
+    sys.stdout.flush()
+
+
 def download_chunk(url, headers, path):
     with open(path, 'wb') as handle:
         data = requests.get(url, stream=True, headers=headers)
@@ -165,7 +176,6 @@ def download_chunk(url, headers, path):
             sys.exit(1)
         for block in data.iter_content(4096):
             handle.write(block)
-
 
 
 def process(args):
@@ -242,8 +252,7 @@ def process(args):
 
     # Set a mocked user agent.
     if agent_mocking:
-        sys.stdout.write(STDOUT.format("Getting mocked User-Agent."))
-        sys.stdout.flush()
+        stdout("Getting mocked User-Agent.")
         req_headers['User-Agent'] = get_mocked_user_agent()
 
 
@@ -261,8 +270,7 @@ def process(args):
         else:
             req_url = PERISCOPE_GETBROADCAST.format("token", url_parts['token'])
 
-        sys.stdout.write(STDOUT.format("Downloading broadcast information."))
-        sys.stdout.flush()
+        stdout("Downloading broadcast information.")
         response = requests.get(req_url, headers=req_headers)
         broadcast_public = json.loads(response.text)
 
@@ -276,12 +284,18 @@ def process(args):
         if name[-4:] == ".mp4":
             name = name[:-4]
         if name == "":
-            broadcast_start_time = broadcast_public['broadcast']['start'].rfind('.')
-            broadcast_start_time = broadcast_public['broadcast']['start'][:broadcast_start_time]
-            broadcast_start_time = datetime.strptime(broadcast_start_time, '%Y-%m-%dT%H:%M:%S')
-            broadcast_start_time = "{}-{}-{} {}-{}-{}".format(broadcast_start_time.year, broadcast_start_time.month,
-                                                              broadcast_start_time.day, broadcast_start_time.hour,
-                                                              broadcast_start_time.minute, broadcast_start_time.second)
+            broadcast_start_time_end = broadcast_public['broadcast']['start'].rfind('.')
+            timezone = broadcast_public['broadcast']['start'][broadcast_start_time_end:]
+            timezone_start = timezone.rfind('-') if timezone.rfind('-') != -1 else timezone.rfind('+')
+            timezone = timezone[timezone_start:].replace(':', '')
+            to_zone = tz.tzlocal()
+            broadcast_start_time = broadcast_public['broadcast']['start'][:broadcast_start_time_end]
+            broadcast_start_time = "{}{}".format(broadcast_start_time, timezone)
+            broadcast_start_time_dt = datetime.strptime(broadcast_start_time, '%Y-%m-%dT%H:%M:%S%z')
+            broadcast_start_time_dt = broadcast_start_time_dt.astimezone(to_zone)
+            broadcast_start_time = "{}-{}-{} {}-{}-{}".format(broadcast_start_time_dt.year, broadcast_start_time_dt.month,
+                                                              broadcast_start_time_dt.day, broadcast_start_time_dt.hour,
+                                                              broadcast_start_time_dt.minute, broadcast_start_time_dt.second)
             name = "{} ({})".format(broadcast_public['broadcast']['username'], broadcast_start_time)
 
 
@@ -300,8 +314,7 @@ def process(args):
             else:
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
-            sys.stdout.write(STDOUT.format("Downloading live stream information."))
-            sys.stdout.flush()
+            stdout("Downloading live stream information.")
             response = requests.get(req_url, headers=req_headers)
             access_public = json.loads(response.text)
 
@@ -312,26 +325,22 @@ def process(args):
             live_url = FFMPEG_LIVE.format(url_parts['url'], req_headers['User-Agent'], access_public['hls_url'], name)
 
             # Start downloading live stream.
-            sys.stdout.write(STDOUT.format("Recording stream to {}.ts".format(name)))
-            sys.stdout.flush()
+            stdout("Recording stream to {}.ts".format(name))
 
             Popen(live_url, shell=True, stdout=PIPE).stdout.read()
 
-            sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
-            sys.stdout.flush()
+            stdoutnl("{}.ts Downloaded!".format(name))
 
             # Convert video to .mp4.
             if convert:
-                sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
-                sys.stdout.flush()
+                stdout("Converting to {}.mp4".format(name))
 
                 if rotate:
                     Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
                 else:
                     Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
 
-                sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
-                sys.stdout.flush()
+                stdoutnl("Converted to {}.mp4!".format(name))
 
                 if clean and os.path.exists("{}.ts".format(name)):
                     os.remove("{}.ts".format(name))
@@ -348,8 +357,7 @@ def process(args):
             else:
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
-            sys.stdout.write(STDOUT.format("Downloading replay information."))
-            sys.stdout.flush()
+            stdout("Downloading replay information.")
             response = requests.get(req_url, headers=req_headers)
             access_public = json.loads(response.text)
 
@@ -368,8 +376,7 @@ def process(args):
             req_headers['Host'] = "replay.periscope.tv"
 
             # Get the list of chunks to download.
-            sys.stdout.write(STDOUT.format("Downloading chunk list."))
-            sys.stdout.flush()
+            stdout("Downloading chunk list.")
             response = requests.get(access_public['replay_url'], headers=req_headers)
             chunks = response.text
             chunk_pattern = re.compile(r'chunk_\d+\.ts')
@@ -390,8 +397,7 @@ def process(args):
             if not os.path.exists(temp_dir_name):
                 os.makedirs(temp_dir_name)
 
-            sys.stdout.write(STDOUT.format("Downloading replay {}.ts.".format(name)))
-            sys.stdout.flush()
+            stdout("Downloading replay {}.ts.".format(name))
 
             for chunk_info in download_list:
                 temp_file_path = "{}/{}".format(temp_dir_name, chunk_info['file_name'])
@@ -404,8 +410,7 @@ def process(args):
                 try:
                     os.remove("{}.ts".format(name))
                 except:
-                    sys.stdout.write(STDOUTNL.format("Failed to delete preexisting {}.ts.".format(name)))
-                    sys.stdout.flush()
+                    stdoutnl("Failed to delete preexisting {}.ts.".format(name))
 
             with open("{}.ts".format(name), 'wb') as handle:
                 for chunk_info in download_list:
@@ -416,30 +421,25 @@ def process(args):
                 try:
                     shutil.rmtree(temp_dir_name)
                 except:
-                    sys.stdout.write(STDOUTNL.format("Failed to delete temp folder: {}.".format(temp_dir_name)))
-                    sys.stdout.flush()
+                    stdoutnl("Failed to delete temp folder: {}.".format(temp_dir_name))
 
-            sys.stdout.write(STDOUTNL.format("{}.ts Downloaded!".format(name)))
-            sys.stdout.flush()
+            stdoutnl("{}.ts Downloaded!".format(name))
 
             # Convert video to .mp4.
             if convert:
-                sys.stdout.write(STDOUT.format("Converting to {}.mp4".format(name)))
-                sys.stdout.flush()
+                stdout("Converting to {}.mp4".format(name))
 
                 if rotate:
                     Popen(FFMPEG_ROT.format(name), shell=True, stdout=PIPE).stdout.read()
                 else:
                     Popen(FFMPEG_NOROT.format(name), shell=True, stdout=PIPE).stdout.read()
 
-                sys.stdout.write(STDOUTNL.format("Converted to {}.mp4!".format(name)))
-                sys.stdout.flush()
+                stdoutnl("Converted to {}.mp4!".format(name))
 
                 if clean and os.path.exists("{}.ts".format(name)):
                     try:
                         os.remove("{}.ts".format(name))
                     except:
-                        sys.stdout.write(STDOUTNL.format("Failed to delete {}.ts.".format(name)))
-                        sys.stdout.flush()
+                        stdout("Failed to delete {}.ts.".format(name))
 
     sys.exit(0)

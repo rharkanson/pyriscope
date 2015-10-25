@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.2
+1.2.3
 
 ### About
 
@@ -26,6 +26,12 @@ Pyriscope is open source, with a [public repo][git-repo-url] on Github.
 
 ```sh
 $ pip install pyriscope
+```
+
+If Pyriscope is already installed, upgrade to the latest version with:
+
+```sh
+$ pip install pyriscope --upgrade
 ```
 
 ### Usage
