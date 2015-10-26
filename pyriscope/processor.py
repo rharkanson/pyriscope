@@ -6,10 +6,11 @@ See the file LICENSE.txt for copying permission.
 
 import sys
 import os
+import shutil
+import string
 import re
 import json
 import requests
-import shutil
 from subprocess import PIPE, Popen
 from datetime import datetime
 from dateutil import tz
@@ -19,7 +20,7 @@ from threading import Thread
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.3"
+VERSION = "1.2.4"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -31,12 +32,12 @@ ARGLIST_CLEAN = ('-C', '--clean')
 ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
-DEFAULT_UA = "Mozilla\/5.0 (X11; U; Linux i686; de; rv:1.9.0.18) Gecko\/2010020400 SUSE\/3.0.18-0.1.1 Firefox\/3.0.18"
+DEFAULT_UA = "Mozilla\/5.0 (Windows NT 6.1; WOW64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/45.0.2454.101 Safari\/537.36"
 DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
-URL_PATTERN = re.compile(r'(http:\/\/|https:\/\/|)(www.|)(periscope.tv|perisearch.net)\/(w|\S+)\/(\S+)')
+URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
 
 
 # Classes.
@@ -104,7 +105,7 @@ options:
     -c, --convert           Convert download (.ts) to mp4. (Requires ffmpeg)
     -C, --clean             Convert, then clean up (delete) .ts file. (Requires ffmpeg)
     -r, --rotate            If convert, rotate converted video.
-    -a, --agent             Turn off user agent mocking. (Slightly quicker initial startup)
+    -a, --agent             Turn on random user agent mocking. (Adds extra HTTP request)
     -n, --name <file>       Name the file (for single URL input only).
 
 ffmpeg status:
@@ -157,14 +158,20 @@ def get_mocked_user_agent():
             return DEFAULT_UA
 
 
-def stdout(string):
-    sys.stdout.write(STDOUT.format(string))
+def stdout(s):
+    sys.stdout.write(STDOUT.format(s))
     sys.stdout.flush()
 
 
-def stdoutnl(string):
-    sys.stdout.write(STDOUTNL.format(string))
+def stdoutnl(s):
+    sys.stdout.write(STDOUTNL.format(s))
     sys.stdout.flush()
+
+
+def sanitize(s):
+    valid = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    sanitized = ''.join(char for char in s if char in valid)
+    return sanitized
 
 
 def download_chunk(url, headers, path):
@@ -189,7 +196,7 @@ def process(args):
     convert = False
     clean = False
     rotate = False
-    agent_mocking = True
+    agent_mocking = False
     name = ""
     req_headers = {}
 
@@ -233,7 +240,7 @@ def process(args):
             convert = True
             rotate = True
         if args[i] in ARGLIST_AGENTMOCK:
-            agent_mocking = False
+            agent_mocking = True
         if args[i] in ARGLIST_NAME:
             cont = ARGLIST_NAME
 
@@ -254,6 +261,8 @@ def process(args):
     if agent_mocking:
         stdout("Getting mocked User-Agent.")
         req_headers['User-Agent'] = get_mocked_user_agent()
+    else:
+        req_headers['User-Agent'] = DEFAULT_UA
 
 
     url_count = 0
@@ -293,11 +302,12 @@ def process(args):
             broadcast_start_time = "{}{}".format(broadcast_start_time, timezone)
             broadcast_start_time_dt = datetime.strptime(broadcast_start_time, '%Y-%m-%dT%H:%M:%S%z')
             broadcast_start_time_dt = broadcast_start_time_dt.astimezone(to_zone)
-            broadcast_start_time = "{}-{}-{} {}-{}-{}".format(broadcast_start_time_dt.year, broadcast_start_time_dt.month,
-                                                              broadcast_start_time_dt.day, broadcast_start_time_dt.hour,
-                                                              broadcast_start_time_dt.minute, broadcast_start_time_dt.second)
+            broadcast_start_time = "{}-{:02d}-{:02d} {:02d}-{:02d}-{:02d}".format(
+                broadcast_start_time_dt.year, broadcast_start_time_dt.month, broadcast_start_time_dt.day,
+                broadcast_start_time_dt.hour, broadcast_start_time_dt.minute, broadcast_start_time_dt.second)
             name = "{} ({})".format(broadcast_public['broadcast']['username'], broadcast_start_time)
 
+        name = sanitize(name)
 
         # Get ready to start capturing.
         if broadcast_public['broadcast']['state'] == 'RUNNING':

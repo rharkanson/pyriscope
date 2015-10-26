@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.3
+1.2.4
 
 ### About
 
@@ -61,7 +61,7 @@ options:
 
     -r, --rotate            If convert, rotate converted video.
 
-    -a, --agent             Turn off user agent mocking. (Slightly quicker initial startup)
+    -a, --agent             Turn on random user agent mocking. (Adds extra HTTP request)
 
     -n, --name <file>       Name the file (for single URL input only).
 

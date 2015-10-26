@@ -7,7 +7,7 @@ See the file LICENSE.txt for copying permission.
 from setuptools import setup
 
 __author__ = 'Russell Harkanson'
-VERSION = '1.2.3'
+VERSION = '1.2.4'
 
 setup(name='pyriscope',
       version=VERSION,
