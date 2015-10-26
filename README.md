@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.4
+1.2.5
 
 ### About
 
@@ -65,6 +65,10 @@ options:
 
     -n, --name <file>       Name the file (for single URL input only).
 
+    -t <duration>           The duration (defined by ffmpeg) to record live streams.
+
+
+`duration` is defined by [ffmpeg Time duration].
 
 
 License
@@ -98,3 +102,4 @@ THE SOFTWARE.
    [git-repo-url]: <https://github.com/rharkanson/pyriscope>
    [@RussHarkanson]: <http://twitter.com/RussHarkanson>
    [ffmpeg]: <https://www.ffmpeg.org/>
+   [ffmpeg Time duration]: <https://www.ffmpeg.org/ffmpeg-utils.html#time-duration-syntax>

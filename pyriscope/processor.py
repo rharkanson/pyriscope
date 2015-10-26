@@ -20,7 +20,7 @@ from threading import Thread
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.4"
+VERSION = "1.2.5"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -32,11 +32,12 @@ ARGLIST_CLEAN = ('-C', '--clean')
 ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
+ARGLIST_TIME = ('-t')
 DEFAULT_UA = "Mozilla\/5.0 (Windows NT 6.1; WOW64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/45.0.2454.101 Safari\/537.36"
 DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
-FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy \"{}.ts\""
+FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy{} \"{}.ts\""
 URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
 
 
@@ -107,6 +108,7 @@ options:
     -r, --rotate            If convert, rotate converted video.
     -a, --agent             Turn on random user agent mocking. (Adds extra HTTP request)
     -n, --name <file>       Name the file (for single URL input only).
+    -t <duration>           The duration (defined by ffmpeg) to record live streams.
 
 ffmpeg status:
     {}
@@ -198,6 +200,7 @@ def process(args):
     rotate = False
     agent_mocking = False
     name = ""
+    live_duration = ""
     req_headers = {}
 
     # Check for ffmpeg.
@@ -226,6 +229,9 @@ def process(args):
             else:
                 name += " {}".format(args[i])
             continue
+        if cont == ARGLIST_TIME:
+            cont = None
+            live_duration = args[i]
 
         if re.search(URL_PATTERN, args[i]) is not None:
             url_parts_list.append(dissect_url(args[i]))
@@ -243,6 +249,8 @@ def process(args):
             agent_mocking = True
         if args[i] in ARGLIST_NAME:
             cont = ARGLIST_NAME
+        if args[i] in ARGLIST_TIME:
+            cont = ARGLIST_TIME
 
 
     # Check for URLs found.
@@ -332,7 +340,16 @@ def process(args):
                 print("\nError: Video expired/deleted/wasn't found: {}".format(url_parts['url']))
                 continue
 
-            live_url = FFMPEG_LIVE.format(url_parts['url'], req_headers['User-Agent'], access_public['hls_url'], name)
+            time_argument = ""
+            if not live_duration == "":
+                time_argument = " -t {}".format(live_duration)
+
+            live_url = FFMPEG_LIVE.format(
+                url_parts['url'],
+                req_headers['User-Agent'],
+                access_public['hls_url'],
+                time_argument,
+                name)
 
             # Start downloading live stream.
             stdout("Recording stream to {}.ts".format(name))
