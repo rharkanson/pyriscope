@@ -5,8 +5,13 @@ See the file LICENSE.txt for copying permission.
 """
 
 import sys
-from pyriscope import processor
 
+if sys.version < '3':
+    print("Error: Python 3+ required to run Pyriscope.")
+    sys.exit(1)
+
+
+from pyriscope import processor
 
 def main(args=None):
     if args is None:

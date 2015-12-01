@@ -20,7 +20,7 @@ from threading import Thread
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.5"
+VERSION = "1.2.6"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"

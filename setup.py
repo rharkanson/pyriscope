@@ -7,7 +7,7 @@ See the file LICENSE.txt for copying permission.
 from setuptools import setup
 
 __author__ = 'Russell Harkanson'
-VERSION = '1.2.5'
+VERSION = '1.2.6'
 
 setup(name='pyriscope',
       version=VERSION,
@@ -20,7 +20,15 @@ setup(name='pyriscope',
       package_data={'pyriscope': ['*.txt']},
       download_url='https://github.com/rharkanson/pyriscope/tarball/{}'.format(VERSION),
       keywords=['video', 'downloader', 'Periscope'],
-      classifiers=[],
+      classifiers=[
+          'Programming Language :: Python',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3 :: Only',
+          'License :: OSI Approved :: MIT License',
+          'Natural Language :: English',
+          'Topic :: Multimedia :: Video',
+          'Topic :: Multimedia :: Video :: Capture'
+      ],
       install_requires=["requests", "wheel", "six", "python-dateutil"],
       entry_points={
           'console_scripts': [
