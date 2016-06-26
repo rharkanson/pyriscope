@@ -20,7 +20,7 @@ from threading import Thread
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.6"
+VERSION = "1.2.7"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -39,6 +39,8 @@ FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec cop
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy{} \"{}.ts\""
 URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
+REPLAY_URL = "https://replay.periscope.tv/{}/{}"
+REPLAY_PATTERN = re.compile(r'https://replay.periscope.tv/(\S*)/(\S*)')
 
 
 # Classes.
@@ -141,6 +143,21 @@ def dissect_url(url):
 
     except:
         print("\nError: Invalid URL: {}".format(url))
+        sys.exit(1)
+
+    return parts
+
+
+def dissect_replay_url(url):
+    match = re.search(REPLAY_PATTERN, url)
+    parts = {}
+
+    try:
+        parts['key'] = match.group(1)
+        parts['file'] = match.group(2)
+
+    except:
+        print("\nError: Invalid Replay URL: {}".format(url))
         sys.exit(1)
 
     return parts
@@ -392,7 +409,8 @@ def process(args):
                 print("\nError: Video expired/deleted/wasn't found: {}".format(url_parts['url']))
                 continue
 
-            base_url = access_public['replay_url'][:-14]
+            base_url = access_public['replay_url']
+            base_url_parts = dissect_replay_url(base_url)
 
             req_headers['Cookie'] = "{}={};{}={};{}={}".format(access_public['cookies'][0]['Name'],
                                                                access_public['cookies'][0]['Value'],
@@ -412,7 +430,7 @@ def process(args):
             for chunk in re.findall(chunk_pattern, chunks):
                 download_list.append(
                     {
-                        'url': "{}/{}".format(base_url, chunk),
+                        'url': REPLAY_URL.format(base_url_parts['key'], chunk),
                         'file_name': chunk
                     }
                 )
