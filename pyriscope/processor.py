@@ -306,6 +306,9 @@ def process(args):
 
         stdout("Downloading broadcast information.")
         response = requests.get(req_url, headers=req_headers)
+        if response.status_code != 200:
+            stdout("Broadcast ID is gone.")
+            continue
         broadcast_public = json.loads(response.text)
 
         if 'success' in broadcast_public and broadcast_public['success'] == False:
