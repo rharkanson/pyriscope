@@ -11,6 +11,7 @@ import string
 import re
 import json
 import requests
+import traceback
 from subprocess import PIPE, Popen
 from datetime import datetime
 from dateutil import tz
@@ -33,6 +34,7 @@ ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
 ARGLIST_TIME = ('-t')
+TIMEOUT = 120
 DEFAULT_UA = "Mozilla\/5.0 (Windows NT 6.1; WOW64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/45.0.2454.101 Safari\/537.36"
 DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
@@ -58,6 +60,7 @@ class Worker(Thread):
             try: func(*args, **kargs)
             except Exception:
                 print("\nError: Threadpool error.")
+                traceback.print_exc()
                 sys.exit(1)
 
             self.tasks_info['num_tasks_complete'] += 1
@@ -165,12 +168,12 @@ def dissect_replay_url(url):
 
 def get_mocked_user_agent():
     try:
-        response = requests.get("http://api.useragent.io/")
+        response = requests.get("http://api.useragent.io/", timeout=TIMEOUT)
         response = json.loads(response.text)
         return response['ua']
     except:
         try:
-            response = requests.get("http://labs.wis.nu/ua/")
+            response = requests.get("http://labs.wis.nu/ua/", timeout=TIMEOUT)
             response = json.loads(response.text)
             return response['ua']
         except:
@@ -195,13 +198,18 @@ def sanitize(s):
 
 def download_chunk(url, headers, path):
     with open(path, 'wb') as handle:
-        data = requests.get(url, stream=True, headers=headers)
+        try:
+            data = requests.get(url, stream=True, headers=headers, timeout=TIMEOUT*2)
 
-        if not data.ok:
-            print("\nError: Unable to download chunk.")
-            sys.exit(1)
-        for block in data.iter_content(4096):
-            handle.write(block)
+            if not data.ok:
+                print("\nError: Unable to download chunk - {}".format(path))
+
+            if data.ok:
+                for block in data.iter_content(4096):
+                    handle.write(block)
+        except requests.exceptions.ConnectionError:
+            print("\nConnection timeout for chunk.")
+
 
 
 def process(args):
@@ -305,7 +313,10 @@ def process(args):
             req_url = PERISCOPE_GETBROADCAST.format("token", url_parts['token'])
 
         stdout("Downloading broadcast information.")
-        response = requests.get(req_url, headers=req_headers)
+        response = requests.get(req_url, headers=req_headers, timeout=TIMEOUT)
+        if response.status_code != 200:
+            stdout("Download failed ID not found.")
+            continue
         broadcast_public = json.loads(response.text)
 
         if 'success' in broadcast_public and broadcast_public['success'] == False:
@@ -350,7 +361,10 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading live stream information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, timeout=TIMEOUT)
+            if response.status_code != 200:
+                stdout("Download failed live stream information not found.")
+                continue
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -402,7 +416,10 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading replay information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, timeout=TIMEOUT)
+            if response.status_code != 200:
+                stdout("Download failed replay information not found.")
+                continue
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -422,7 +439,11 @@ def process(args):
 
             # Get the list of chunks to download.
             stdout("Downloading chunk list.")
-            response = requests.get(access_public['replay_url'], headers=req_headers)
+            response = requests.get(access_public['replay_url'], headers=req_headers, timeout=TIMEOUT)
+            if response.status_code != 200:
+                stdout("Download failed chunk list not found.")
+                continue
+
             chunks = response.text
             chunk_pattern = re.compile(r'chunk_\d+\.ts')
 
