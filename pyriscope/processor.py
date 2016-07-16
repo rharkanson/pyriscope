@@ -14,8 +14,8 @@ import requests
 from subprocess import PIPE, Popen
 from datetime import datetime
 from dateutil import tz
-from queue import Queue
-from threading import Thread
+from queue import Queue, Empty
+from threading import Thread, Event
 
 
 # Contants.
@@ -42,47 +42,84 @@ URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.ne
 REPLAY_URL = "https://replay.periscope.tv/{}/{}"
 REPLAY_PATTERN = re.compile(r'https://replay.periscope.tv/(\S*)/(\S*)')
 
-
 # Classes.
+class ReplayDeleted(Exception):
+    pass
+
+
+class TasksInfo:
+    def __init__(self, name, num_tasks):
+        self.name = name
+        self.num_tasks = num_tasks
+        self.num_tasks_complete = 0
+
+    def is_complete(self):
+        return self.num_tasks_complete == self.num_tasks
+
+
 class Worker(Thread):
     def __init__(self, thread_pool):
         Thread.__init__(self)
-        self.tasks = thread_pool.tasks
+        self.tasks      = thread_pool.tasks
         self.tasks_info = thread_pool.tasks_info
-        self.daemon = True
+        self.stop       = thread_pool.stop
         self.start()
 
     def run(self):
-        while True:
-            func, args, kargs = self.tasks.get()
+        while not self.stop.is_set():
+            try:
+                # don't block forever, ...
+                func, args, kargs = self.tasks.get(timeout=0.5)
+            except Empty:
+                # ...check periodically if we should stop
+                continue
+
             try: func(*args, **kargs)
-            except Exception:
-                print("\nError: Threadpool error.")
+            except Exception as e:
+                print("\nError: ThreadPool Worker Exception:", e)
                 sys.exit(1)
 
-            self.tasks_info['num_tasks_complete'] += 1
-            perc = int((self.tasks_info['num_tasks_complete']/self.tasks_info['num_tasks'])*100)
-            sys.stdout.write(STDOUT.format("[{:>3}%] Downloading replay {}.ts.".format(perc, self.tasks_info['name'])))
+            self.tasks_info.num_tasks_complete += 1
+            perc = int((self.tasks_info.num_tasks_complete / self.tasks_info.num_tasks)*100)
+            sys.stdout.write(STDOUT.format("[{:>3}%] Downloading replay {}.ts.".format(perc, self.tasks_info.name)))
             sys.stdout.flush()
 
             self.tasks.task_done()
 
+            if self.tasks_info.is_complete():
+                # stop other threads, no more work
+                self.stop.set()
+
 
 class ThreadPool:
     def __init__(self, name, num_threads, num_tasks):
-        self.tasks = Queue(num_threads)
-        self.tasks_info = {
-            'name': name,
-            'num_tasks': num_tasks,
-            'num_tasks_complete': 0
-        }
-        for _ in range(num_threads): Worker(self)
+        self.tasks      = Queue(0)
+        self.tasks_info = TasksInfo(name, num_tasks)
+        self.stop       = Event()
+        self.workers    = [Worker(self) for _ in range(num_threads)]
 
     def add_task(self, func, *args, **kwargs):
         self.tasks.put((func, args, kwargs))
 
+    def is_complete(self):
+        return self.tasks_info.is_complete()
+
     def wait_completion(self):
-        self.tasks.join()
+        # If all workers quit because of errors, tasks.join()
+        # will never return. Join worker threads instead.
+        while self.workers:
+            try:
+                self.workers = [w for w in self.workers if w.is_alive()]
+                for worker in self.workers:
+                    # don't block forever, ...
+                    worker.join(timeout=0.5)
+            # ...so we can gracefully abort on Ctrl+C
+            except KeyboardInterrupt:
+                self.stop.set()
+                stdoutnl('Cancelling download...')
+
+        if not self.stop.is_set() and not self.tasks_info.is_complete():
+            stdoutnl('Replay became unavailable before download finished.')
 
 
 # Functions.
@@ -198,8 +235,7 @@ def download_chunk(url, headers, path):
         data = requests.get(url, stream=True, headers=headers)
 
         if not data.ok:
-            print("\nError: Unable to download chunk.")
-            sys.exit(1)
+            raise ReplayDeleted('Unable to download chunk {}.'.format(url))
         for block in data.iter_content(4096):
             handle.write(block)
 
@@ -459,16 +495,23 @@ def process(args):
 
             with open("{}.ts".format(name), 'wb') as handle:
                 for chunk_info in download_list:
-                    with open(chunk_info['file_path'], 'rb') as ts_file:
+                    file_path = chunk_info['file_path']
+                    if not os.path.exists(file_path) and os.path.getsize(file_path) == 0:
+                        break
+                    with open(file_path, 'rb') as ts_file:
                         handle.write(ts_file.read())
 
-            if os.path.exists(temp_dir_name):
+            # don't delete temp if the download had missing chunks, just in case
+            if pool.is_complete() and os.path.exists(temp_dir_name):
                 try:
                     shutil.rmtree(temp_dir_name)
                 except:
                     stdoutnl("Failed to delete temp folder: {}.".format(temp_dir_name))
 
-            stdoutnl("{}.ts Downloaded!".format(name))
+            if pool.is_complete():
+                stdoutnl("{}.ts Downloaded!".format(name))
+            else:
+                stdoutnl("{}.ts partially Downloaded!".format(name))
 
             # Convert video to .mp4.
             if convert:
