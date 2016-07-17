@@ -496,7 +496,7 @@ def process(args):
             with open("{}.ts".format(name), 'wb') as handle:
                 for chunk_info in download_list:
                     file_path = chunk_info['file_path']
-                    if not os.path.exists(file_path) and os.path.getsize(file_path) == 0:
+                    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                         break
                     with open(file_path, 'rb') as ts_file:
                         handle.write(ts_file.read())
