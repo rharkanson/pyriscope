@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.7
+1.2.8
 
 ### About
 
@@ -21,6 +21,8 @@ Author: Russell Harkanson <[@RussHarkanson]>
 Pyriscope was influenced by [n3tman/periscope.tv], a Windows batch script for downloading Periscope videos.
 
 Pyriscope is open source, with a [public repo][git-repo-url] on Github.
+
+BIG THANKS to [crusherw] for setting the threads straight.
 
 ### Installation
 
@@ -103,3 +105,4 @@ THE SOFTWARE.
    [@RussHarkanson]: <http://twitter.com/RussHarkanson>
    [ffmpeg]: <https://www.ffmpeg.org/>
    [ffmpeg Time duration]: <https://www.ffmpeg.org/ffmpeg-utils.html#time-duration-syntax>
+   [crusherw]: <https://github.com/crusherw>
