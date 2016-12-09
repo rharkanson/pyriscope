@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Russell Harkanson
+Copyright (c) 2017 Russell Harkanson
 
 See the file LICENSE.txt for copying permission.
 """
@@ -20,7 +20,7 @@ from threading import Thread, Event
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.8"
+VERSION = "1.2.9"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -40,7 +40,7 @@ FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy 
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy{} \"{}.ts\""
 URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
 REPLAY_URL = "https://replay.periscope.tv/{}/{}"
-REPLAY_PATTERN = re.compile(r'https://replay.periscope.tv/(\S*)/(\S*)')
+REPLAY_PATTERN = re.compile(r'https://(\S*).periscope.tv/(\S*)/(\S*)')
 
 # Classes.
 class ReplayDeleted(Exception):
@@ -190,8 +190,9 @@ def dissect_replay_url(url):
     parts = {}
 
     try:
-        parts['key'] = match.group(1)
-        parts['file'] = match.group(2)
+        REPLAY_URL = "https://" + match.group(1) + ".periscope.tv/{}/{}"
+        parts['key'] = match.group(2)
+        parts['file'] = match.group(3)
 
     except:
         print("\nError: Invalid Replay URL: {}".format(url))

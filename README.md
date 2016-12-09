@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.8
+1.2.9
 
 ### About
 
@@ -22,7 +22,7 @@ Pyriscope was influenced by [n3tman/periscope.tv], a Windows batch script for do
 
 Pyriscope is open source, with a [public repo][git-repo-url] on Github.
 
-BIG THANKS to [crusherw] for setting the threads straight.
+BIG THANKS to [crusherw] for setting the threads straight and to [zendesk-thittesdorf] for the CloudFlare replay patch!
 
 ### Installation
 
@@ -78,7 +78,7 @@ License
 
 The MIT License (MIT)
 
-Copyright (c) 2015 Russell Harkanson
+Copyright (c) 2017 Russell Harkanson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -106,3 +106,4 @@ THE SOFTWARE.
    [ffmpeg]: <https://www.ffmpeg.org/>
    [ffmpeg Time duration]: <https://www.ffmpeg.org/ffmpeg-utils.html#time-duration-syntax>
    [crusherw]: <https://github.com/crusherw>
+   [zendesk-thittesdorf]: <https://github.com/zendesk-thittesdorf>
