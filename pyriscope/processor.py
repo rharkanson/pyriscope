@@ -20,7 +20,7 @@ from threading import Thread, Event
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.9"
+VERSION = "1.2.10"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -39,7 +39,7 @@ FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec cop
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy{} \"{}.ts\""
 URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
-REPLAY_URL = "https://replay.periscope.tv/{}/{}"
+REPLAY_URL = "https://{}/{}/{}"
 REPLAY_PATTERN = re.compile(r'https://(\S*).periscope.tv/(\S*)/(\S*)')
 
 # Classes.
@@ -190,7 +190,6 @@ def dissect_replay_url(url):
     parts = {}
 
     try:
-        REPLAY_URL = "https://" + match.group(1) + ".periscope.tv/{}/{}"
         parts['key'] = match.group(2)
         parts['file'] = match.group(3)
 
@@ -449,28 +448,39 @@ def process(args):
             base_url = access_public['replay_url']
             base_url_parts = dissect_replay_url(base_url)
 
-            req_headers['Cookie'] = "{}={};{}={};{}={}".format(access_public['cookies'][0]['Name'],
-                                                               access_public['cookies'][0]['Value'],
-                                                               access_public['cookies'][1]['Name'],
-                                                               access_public['cookies'][1]['Value'],
-                                                               access_public['cookies'][2]['Name'],
-                                                               access_public['cookies'][2]['Value'])
-            req_headers['Host'] = "replay.periscope.tv"
+
+            cookiestr = ""
+            cookielist = access_public['cookies']
+            for cookie in cookielist:
+                cookiestr = cookiestr + "{}={};".format(cookie['Name'], cookie['Value'])
+
+            #req_headers['Cookie'] = "{}={};{}={}".format(access_public['cookies'][0]['Name'], access_public['cookies'][0]['Value'], access_public['cookies'][1]['Name'], access_public['cookies'][1]['Value'])
+            req_headers['Cookie'] = cookiestr
+
+            from urllib.parse import urlparse
+            host = urlparse(base_url).netloc
+            req_headers['Host'] = host
 
             # Get the list of chunks to download.
             stdout("Downloading chunk list.")
-            response = requests.get(access_public['replay_url'], headers=req_headers)
+            response = requests.get(base_url, headers=req_headers)
             chunks = response.text
             chunk_pattern = re.compile(r'chunk_\d+\.ts')
-
+            print("\n")
+            print(response.status_code)
+            print("\n")
             download_list = []
             for chunk in re.findall(chunk_pattern, chunks):
                 download_list.append(
                     {
-                        'url': REPLAY_URL.format(base_url_parts['key'], chunk),
+                        'url': REPLAY_URL.format(host, base_url_parts['key'], chunk),
                         'file_name': chunk
                     }
                 )
+            # Check for empty download_list
+            if not download_list:
+                print("No chunks found")
+                quit()
 
             # Download chunk .ts files and append them.
             pool = ThreadPool(name, DEFAULT_DL_THREADS, len(download_list))

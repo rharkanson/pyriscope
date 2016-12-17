@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.9
+1.2.10
 
 ### About
 
