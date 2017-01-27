@@ -11,6 +11,7 @@ import string
 import re
 import json
 import requests
+import dateutil.parser
 from subprocess import PIPE, Popen
 from datetime import datetime
 from dateutil import tz
@@ -354,21 +355,23 @@ def process(args):
         if name[-4:] == ".mp4":
             name = name[:-4]
         if name == "":
-            broadcast_start_time_end = broadcast_public['broadcast']['start'].rfind('.')
-            timezone = broadcast_public['broadcast']['start'][broadcast_start_time_end:]
-            timezone_start = timezone.rfind('-') if timezone.rfind('-') != -1 else timezone.rfind('+')
-            timezone = timezone[timezone_start:].replace(':', '')
-            to_zone = tz.tzlocal()
-            broadcast_start_time = broadcast_public['broadcast']['start'][:broadcast_start_time_end]
-            broadcast_start_time = "{}{}".format(broadcast_start_time, timezone)
-            broadcast_start_time_dt = datetime.strptime(broadcast_start_time, '%Y-%m-%dT%H:%M:%S%z')
-            broadcast_start_time_dt = broadcast_start_time_dt.astimezone(to_zone)
+            broadcast_start_time_dt = dateutil.parser.parse(broadcast_public['broadcast']['start'])
+            broadcast_start_time_dt = broadcast_start_time_dt.astimezone(tz.tzlocal())
             broadcast_start_time = "{}-{:02d}-{:02d} {:02d}-{:02d}-{:02d}".format(
                 broadcast_start_time_dt.year, broadcast_start_time_dt.month, broadcast_start_time_dt.day,
                 broadcast_start_time_dt.hour, broadcast_start_time_dt.minute, broadcast_start_time_dt.second)
             name = "{} ({})".format(broadcast_public['broadcast']['username'], broadcast_start_time)
 
         name = sanitize(name)
+        
+        tempfilename = os.getcwd() + "\\" + name + ".ts"
+        if os.path.isfile(tempfilename):
+            i = 0
+            while os.path.isfile(tempfilename):
+                i = i + 1
+                tempfilename = os.getcwd() + "\\" + name + "-" + str(i) + ".ts"
+            name = name + "-" + str(i)
+            print("FILE ALREADY EXISTS. SAVING AS " + name)
 
         # Get ready to start capturing.
         if broadcast_public['broadcast']['state'] == 'RUNNING':
