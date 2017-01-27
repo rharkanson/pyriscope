@@ -12,7 +12,7 @@ Usage:
 See `pyriscope --help` for further details.
 
 ### Version
-1.2.10
+1.2.11
 
 ### About
 
@@ -23,6 +23,8 @@ Pyriscope was influenced by [n3tman/periscope.tv], a Windows batch script for do
 Pyriscope is open source, with a [public repo][git-repo-url] on Github.
 
 BIG THANKS to [crusherw] for setting the threads straight and to [zendesk-thittesdorf] for the CloudFlare replay patch!
+
+Also [sooqua] for keeping up to date with changes Periscope's end.
 
 ### Installation
 
@@ -107,3 +109,4 @@ THE SOFTWARE.
    [ffmpeg Time duration]: <https://www.ffmpeg.org/ffmpeg-utils.html#time-duration-syntax>
    [crusherw]: <https://github.com/crusherw>
    [zendesk-thittesdorf]: <https://github.com/zendesk-thittesdorf>
+   [sooqua]: <https://github.com/sooqua>
