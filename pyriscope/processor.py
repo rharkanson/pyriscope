@@ -34,6 +34,7 @@ ARGLIST_ROTATE = ('-r', '--rotate')
 ARGLIST_AGENTMOCK = ('-a', '--agent')
 ARGLIST_NAME = ('-n', '--name')
 ARGLIST_TIME = ('-t')
+ARGLIST_PROXY = ('-p', '--proxy')
 DEFAULT_UA = "Mozilla\/5.0 (Windows NT 6.1; WOW64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/45.0.2454.101 Safari\/537.36"
 DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
@@ -149,6 +150,7 @@ options:
     -a, --agent             Turn on random user agent mocking. (Adds extra HTTP request)
     -n, --name <file>       Name the file (for single URL input only).
     -t <duration>           The duration (defined by ffmpeg) to record live streams.
+    -p, --proxy             Set proxy (--proxy ip:port)
 
 ffmpeg status:
     {}
@@ -201,14 +203,14 @@ def dissect_replay_url(url):
     return parts
 
 
-def get_mocked_user_agent():
+def get_mocked_user_agent(proxies):
     try:
-        response = requests.get("http://api.useragent.io/")
+        response = requests.get("http://api.useragent.io/", proxies = proxies)
         response = json.loads(response.text)
         return response['ua']
     except:
         try:
-            response = requests.get("http://labs.wis.nu/ua/")
+            response = requests.get("http://labs.wis.nu/ua/", proxies = proxies)
             response = json.loads(response.text)
             return response['ua']
         except:
@@ -231,9 +233,9 @@ def sanitize(s):
     return sanitized
 
 
-def download_chunk(url, headers, path):
+def download_chunk(url, headers, path, proxies):
     with open(path, 'wb') as handle:
-        data = requests.get(url, stream=True, headers=headers)
+        data = requests.get(url, stream=True, headers=headers, proxies = proxies)
 
         if not data.ok:
             raise ReplayDeleted('Unable to download chunk {}.'.format(url))
@@ -256,7 +258,8 @@ def process(args):
     name = ""
     live_duration = ""
     req_headers = {}
-
+    proxies = {}
+    
     # Check for ffmpeg.
     if shutil.which("ffmpeg") is None:
         ffmpeg = False
@@ -286,7 +289,13 @@ def process(args):
         if cont == ARGLIST_TIME:
             cont = None
             live_duration = args[i]
-
+        if cont == ARGLIST_PROXY:
+            cont = None
+            # prepare proxies for use with requests
+            proxies = {'http' : 'http://' + args[i] , 'https' : 'https://' + args[i]}
+            #set environment variables for ffmpeg to work with proxy
+            os.environ["http_proxy"] = 'http://' + args[i]
+            os.environ["https_proxy"] = 'https://' + args[i]
         if re.search(URL_PATTERN, args[i]) is not None:
             url_parts_list.append(dissect_url(args[i]))
         if args[i] in ARGLIST_HELP:
@@ -305,6 +314,8 @@ def process(args):
             cont = ARGLIST_NAME
         if args[i] in ARGLIST_TIME:
             cont = ARGLIST_TIME
+        if args[i] in ARGLIST_PROXY:
+            cont = ARGLIST_PROXY
 
 
     # Check for URLs found.
@@ -322,7 +333,7 @@ def process(args):
     # Set a mocked user agent.
     if agent_mocking:
         stdout("Getting mocked User-Agent.")
-        req_headers['User-Agent'] = get_mocked_user_agent()
+        req_headers['User-Agent'] = get_mocked_user_agent(proxies)
     else:
         req_headers['User-Agent'] = DEFAULT_UA
 
@@ -342,7 +353,7 @@ def process(args):
             req_url = PERISCOPE_GETBROADCAST.format("token", url_parts['token'])
 
         stdout("Downloading broadcast information.")
-        response = requests.get(req_url, headers=req_headers)
+        response = requests.get(req_url, headers=req_headers, proxies = proxies)
         broadcast_public = json.loads(response.text)
 
         if 'success' in broadcast_public and broadcast_public['success'] == False:
@@ -389,7 +400,7 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading live stream information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, proxies = proxies)
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -441,7 +452,7 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading replay information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, proxies = proxies)
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -466,7 +477,7 @@ def process(args):
 
             # Get the list of chunks to download.
             stdout("Downloading chunk list.")
-            response = requests.get(base_url, headers=req_headers)
+            response = requests.get(base_url, headers=req_headers, proxies = proxies)
             chunks = response.text
             chunk_pattern = re.compile(r'chunk_\d+\.ts')
             print("\n")
@@ -497,7 +508,7 @@ def process(args):
             for chunk_info in download_list:
                 temp_file_path = "{}/{}".format(temp_dir_name, chunk_info['file_name'])
                 chunk_info['file_path'] = temp_file_path
-                pool.add_task(download_chunk, chunk_info['url'], req_headers, temp_file_path)
+                pool.add_task(download_chunk, chunk_info['url'], req_headers, temp_file_path, proxies)
 
             pool.wait_completion()
 
