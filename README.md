@@ -68,9 +68,11 @@ options:
     -a, --agent             Turn on random user agent mocking. (Adds extra HTTP request)
 
     -n, --name <file>       Name the file (for single URL input only).
-
+    
+    -p, --proxy <ip:port>   Set http/https proxy
+    
     -t <duration>           The duration (defined by ffmpeg) to record live streams.
-
+  
 
 `duration` is defined by [ffmpeg Time duration].
 
