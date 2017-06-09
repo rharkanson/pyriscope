@@ -21,7 +21,7 @@ from threading import Thread, Event
 
 # Contants.
 __author__ = 'Russell Harkanson'
-VERSION = "1.2.11"
+VERSION = "1.2.12"
 TERM_W = shutil.get_terminal_size((80, 20))[0]
 STDOUT = "\r{:<" + str(TERM_W) + "}"
 STDOUTNL = "\r{:<" + str(TERM_W) + "}\n"
@@ -39,7 +39,7 @@ DEFAULT_DL_THREADS = 6
 FFMPEG_NOROT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
 FFMPEG_ROT ="ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -acodec copy -vf \"transpose=2\" -crf 30 \"{0}.mp4\""
 FFMPEG_LIVE = "ffmpeg -y -v error -headers \"Referer:{}; User-Agent:{}\" -i \"{}\" -c copy{} \"{}.ts\""
-URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net)/(w|\S+)/(\S+)')
+URL_PATTERN = re.compile(r'(http://|https://|)(www.|)(periscope.tv|perisearch.net|pscp.tv)/(w|\S+)/(\S+)')
 REPLAY_URL = "https://{}/{}/{}"
 REPLAY_PATTERN = re.compile(r'https://(\S*).periscope.tv/(\S*)/(\S*)')
 
@@ -468,10 +468,7 @@ def process(args):
             stdout("Downloading chunk list.")
             response = requests.get(base_url, headers=req_headers)
             chunks = response.text
-            chunk_pattern = re.compile(r'chunk_\d+\.ts')
-            print("\n")
-            print(response.status_code)
-            print("\n")
+            chunk_pattern = re.compile(r'chunk_\d+_\d+\.ts')
             download_list = []
             for chunk in re.findall(chunk_pattern, chunks):
                 download_list.append(
