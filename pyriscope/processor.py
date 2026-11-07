@@ -203,12 +203,12 @@ def dissect_replay_url(url):
 
 def get_mocked_user_agent():
     try:
-        response = requests.get("http://api.useragent.io/")
+        response = requests.get("http://api.useragent.io/", timeout=30)
         response = json.loads(response.text)
         return response['ua']
     except:
         try:
-            response = requests.get("http://labs.wis.nu/ua/")
+            response = requests.get("http://labs.wis.nu/ua/", timeout=30)
             response = json.loads(response.text)
             return response['ua']
         except:
@@ -233,7 +233,7 @@ def sanitize(s):
 
 def download_chunk(url, headers, path):
     with open(path, 'wb') as handle:
-        data = requests.get(url, stream=True, headers=headers)
+        data = requests.get(url, stream=True, headers=headers, timeout=30)
 
         if not data.ok:
             raise ReplayDeleted('Unable to download chunk {}.'.format(url))
@@ -342,7 +342,7 @@ def process(args):
             req_url = PERISCOPE_GETBROADCAST.format("token", url_parts['token'])
 
         stdout("Downloading broadcast information.")
-        response = requests.get(req_url, headers=req_headers)
+        response = requests.get(req_url, headers=req_headers, timeout=30)
         broadcast_public = json.loads(response.text)
 
         if 'success' in broadcast_public and broadcast_public['success'] == False:
@@ -389,7 +389,7 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading live stream information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, timeout=30)
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -441,7 +441,7 @@ def process(args):
                 req_url = PERISCOPE_GETACCESS.format("token", url_parts['token'])
 
             stdout("Downloading replay information.")
-            response = requests.get(req_url, headers=req_headers)
+            response = requests.get(req_url, headers=req_headers, timeout=30)
             access_public = json.loads(response.text)
 
             if 'success' in access_public and access_public['success'] == False:
@@ -466,7 +466,7 @@ def process(args):
 
             # Get the list of chunks to download.
             stdout("Downloading chunk list.")
-            response = requests.get(base_url, headers=req_headers)
+            response = requests.get(base_url, headers=req_headers, timeout=30)
             chunks = response.text
             chunk_pattern = re.compile(r'chunk_\d+\.ts')
             print("\n")
